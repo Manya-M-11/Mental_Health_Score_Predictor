@@ -4,7 +4,7 @@
    CONFIGURATION
    Change this single value when you deploy your FastAPI backend elsewhere.
    ========================================================================== */
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "";
 
 /* ==========================================================================
    ELEMENT REFERENCES
