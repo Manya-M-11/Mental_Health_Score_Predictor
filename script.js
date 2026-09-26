@@ -2,74 +2,127 @@
 
 /* ==========================================================================
    CONFIGURATION
-   Change this single value when you deploy your FastAPI backend elsewhere.
    ========================================================================== */
+
 const API_URL = "";
 
 /* ==========================================================================
    ELEMENT REFERENCES
    ========================================================================== */
+
 const form = document.getElementById("predictForm");
 const predictBtn = document.getElementById("predictBtn");
 const loadingCard = document.getElementById("loadingCard");
 const resultCard = document.getElementById("resultCard");
+
 const scoreNumberEl = document.getElementById("scoreNumber");
 const ringProgress = document.getElementById("ringProgress");
 const scoreInterpretationEl = document.getElementById("scoreInterpretation");
+
 const profileSummaryEl = document.getElementById("profileSummary");
+
 const predictAgainBtn = document.getElementById("predictAgainBtn");
 const resetFormBtn = document.getElementById("resetFormBtn");
+
 const toastEl = document.getElementById("toast");
+
 const stressGrid = document.getElementById("stressGrid");
 const stressHiddenInput = document.getElementById("stress_level");
+
 const themeToggle = document.getElementById("themeToggle");
 const navToggle = document.getElementById("navToggle");
 const mainNav = document.getElementById("mainNav");
 
-const RING_CIRCUMFERENCE = 2 * Math.PI * 94; // matches r=94 on the SVG ring
+/*
+ * SVG ring:
+ * The circle has r=94.
+ */
+const RING_CIRCUMFERENCE = 2 * Math.PI * 94;
+
 
 /* ==========================================================================
-   INIT ICONS
+   INITIALIZATION
    ========================================================================== */
+
 window.addEventListener("DOMContentLoaded", () => {
-  if (window.lucide) window.lucide.createIcons();
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+
   initTheme();
   initSliders();
   initStressCards();
   initNav();
 });
 
+
 /* ==========================================================================
    THEME TOGGLE
    ========================================================================== */
+
 function initTheme() {
   const stored = safeGet("mindscore-theme");
-  const prefersLight = window.matchMedia("(prefers-color-scheme: light)").matches;
-  const initial = stored || (prefersLight ? "light" : "dark");
+
+  const prefersLight =
+    window.matchMedia("(prefers-color-scheme: light)").matches;
+
+  const initial =
+    stored || (prefersLight ? "light" : "dark");
+
   applyTheme(initial);
 
   themeToggle.addEventListener("click", () => {
-    const current = document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
-    const next = current === "light" ? "dark" : "light";
+    const current =
+      document.documentElement.getAttribute("data-theme") === "light"
+        ? "light"
+        : "dark";
+
+    const next =
+      current === "light"
+        ? "dark"
+        : "light";
+
     applyTheme(next);
     safeSet("mindscore-theme", next);
   });
 }
 
+
 function applyTheme(theme) {
   if (theme === "light") {
     document.documentElement.setAttribute("data-theme", "light");
-    themeToggle.setAttribute("aria-pressed", "true");
-    themeToggle.setAttribute("aria-label", "Switch to dark mode");
+
+    themeToggle.setAttribute(
+      "aria-pressed",
+      "true"
+    );
+
+    themeToggle.setAttribute(
+      "aria-label",
+      "Switch to dark mode"
+    );
   } else {
     document.documentElement.removeAttribute("data-theme");
-    themeToggle.setAttribute("aria-pressed", "false");
-    themeToggle.setAttribute("aria-label", "Switch to light mode");
+
+    themeToggle.setAttribute(
+      "aria-pressed",
+      "false"
+    );
+
+    themeToggle.setAttribute(
+      "aria-label",
+      "Switch to light mode"
+    );
   }
 }
 
-// In-memory fallback since this page may run without persistent storage.
+
+/* ==========================================================================
+   SAFE LOCAL STORAGE
+   ========================================================================== */
+
 const memoryStore = {};
+
 function safeSet(key, value) {
   try {
     window.localStorage.setItem(key, value);
@@ -77,6 +130,8 @@ function safeSet(key, value) {
     memoryStore[key] = value;
   }
 }
+
+
 function safeGet(key) {
   try {
     return window.localStorage.getItem(key);
@@ -85,379 +140,1110 @@ function safeGet(key) {
   }
 }
 
+
 /* ==========================================================================
-   MOBILE NAV
+   MOBILE NAVIGATION
    ========================================================================== */
+
 function initNav() {
   navToggle.addEventListener("click", () => {
-    const isOpen = mainNav.classList.toggle("is-open");
-    navToggle.setAttribute("aria-expanded", String(isOpen));
+    const isOpen =
+      mainNav.classList.toggle("is-open");
+
+    navToggle.setAttribute(
+      "aria-expanded",
+      String(isOpen)
+    );
   });
 
   mainNav.querySelectorAll("a").forEach((link) => {
     link.addEventListener("click", () => {
       mainNav.classList.remove("is-open");
-      navToggle.setAttribute("aria-expanded", "false");
+
+      navToggle.setAttribute(
+        "aria-expanded",
+        "false"
+      );
     });
   });
 }
 
+
 /* ==========================================================================
-   SLIDERS — live value display
+   SLIDERS
    ========================================================================== */
+
 function initSliders() {
   const sliders = [
-    { id: "study_hours", suffix: " hrs" },
-    { id: "physical_activity_hours", suffix: " hrs" },
-    { id: "sleep_hours_per_night", suffix: " hrs" },
+    {
+      id: "study_hours",
+      suffix: " hrs"
+    },
+    {
+      id: "physical_activity_hours",
+      suffix: " hrs"
+    },
+    {
+      id: "sleep_hours_per_night",
+      suffix: " hrs"
+    }
   ];
 
   sliders.forEach(({ id, suffix }) => {
     const input = document.getElementById(id);
     const output = document.getElementById(`val-${id}`);
+
+    if (!input || !output) return;
+
     const update = () => {
       const num = parseFloat(input.value);
-      output.textContent = `${num.toFixed(1)}${suffix}`;
+
+      output.textContent =
+        `${num.toFixed(1)}${suffix}`;
     };
+
     input.addEventListener("input", update);
+
     update();
   });
 }
 
+
 /* ==========================================================================
    STRESS CARDS
    ========================================================================== */
+
 function initStressCards() {
-  const cards = stressGrid.querySelectorAll(".stress-card");
+  if (!stressGrid) return;
+
+  const cards =
+    stressGrid.querySelectorAll(".stress-card");
+
   cards.forEach((card) => {
     card.addEventListener("click", () => {
+
       cards.forEach((c) => {
         c.classList.remove("is-selected");
-        c.setAttribute("aria-checked", "false");
+
+        c.setAttribute(
+          "aria-checked",
+          "false"
+        );
       });
+
       card.classList.add("is-selected");
-      card.setAttribute("aria-checked", "true");
-      stressHiddenInput.value = card.dataset.value;
+
+      card.setAttribute(
+        "aria-checked",
+        "true"
+      );
+
+      stressHiddenInput.value =
+        card.dataset.value;
     });
   });
 }
+
 
 /* ==========================================================================
    VALIDATION
    ========================================================================== */
+
 const VALIDATORS = {
+
   age: (v) => {
     const n = Number(v);
-    if (v === "" || Number.isNaN(n)) return "Age is required.";
-    if (n < 10 || n > 100) return "Age must be between 10 and 100.";
+
+    if (v === "" || Number.isNaN(n)) {
+      return "Age is required.";
+    }
+
+    if (n < 10 || n > 100) {
+      return "Age must be between 10 and 100.";
+    }
+
     return "";
   },
-  gender: (v) => (v ? "" : "Please select a gender."),
-  country: (v) => (v.trim() ? "" : "Country is required."),
-  academic_level: (v) => (v ? "" : "Please select an academic level."),
-  most_used_platform: (v) => (v ? "" : "Please select a platform."),
-  purpose_of_use: (v) => (v ? "" : "Please select a purpose."),
+
+
+  gender: (v) => {
+    return v ? "" : "Please select a gender.";
+  },
+
+
+  country: (v) => {
+    return v.trim()
+      ? ""
+      : "Country is required.";
+  },
+
+
+  academic_level: (v) => {
+    return v
+      ? ""
+      : "Please select an academic level.";
+  },
+
+
+  most_used_platform: (v) => {
+    return v
+      ? ""
+      : "Please select a platform.";
+  },
+
+
+  purpose_of_use: (v) => {
+    return v
+      ? ""
+      : "Please select a purpose.";
+  },
+
+
   avg_daily_usage_hours: (v) => {
     const n = Number(v);
-    if (v === "" || Number.isNaN(n)) return "This field is required.";
-    if (n < 0 || n > 24) return "Usage hours must be between 0 and 24.";
+
+    if (v === "" || Number.isNaN(n)) {
+      return "This field is required.";
+    }
+
+    if (n < 0 || n > 24) {
+      return "Usage hours must be between 0 and 24.";
+    }
+
     return "";
   },
+
+
   daily_unlocks: (v) => {
     const n = Number(v);
-    if (v === "" || Number.isNaN(n)) return "This field is required.";
-    if (n < 0) return "Daily unlocks cannot be negative.";
+
+    if (v === "" || Number.isNaN(n)) {
+      return "This field is required.";
+    }
+
+    if (n < 0) {
+      return "Daily unlocks cannot be negative.";
+    }
+
     return "";
   },
+
+
   study_hours: (v) => {
     const n = Number(v);
-    if (n < 0 || n > 24) return "Study hours must be between 0 and 24.";
+
+    if (n < 0 || n > 24) {
+      return "Study hours must be between 0 and 24.";
+    }
+
     return "";
   },
+
+
   physical_activity_hours: (v) => {
     const n = Number(v);
-    if (n < 0 || n > 24) return "Physical activity must be between 0 and 24.";
+
+    if (n < 0 || n > 24) {
+      return "Physical activity must be between 0 and 24.";
+    }
+
     return "";
   },
+
+
   sleep_hours_per_night: (v) => {
     const n = Number(v);
-    if (n < 0 || n > 24) return "Sleep hours must be between 0 and 24.";
+
+    if (n < 0 || n > 24) {
+      return "Sleep hours must be between 0 and 24.";
+    }
+
     return "";
-  },
+  }
+
 };
+
 
 function validateForm(data) {
   const errors = {};
+
   Object.keys(VALIDATORS).forEach((field) => {
-    const message = VALIDATORS[field](String(data[field] ?? ""));
-    if (message) errors[field] = message;
+
+    const message =
+      VALIDATORS[field](
+        String(data[field] ?? "")
+      );
+
+    if (message) {
+      errors[field] = message;
+    }
   });
+
   return errors;
 }
 
-function showFieldErrors(errors) {
-  // Clear all first
-  document.querySelectorAll(".field-error").forEach((el) => (el.textContent = ""));
-  document.querySelectorAll(".field").forEach((el) => el.classList.remove("has-error"));
 
-  Object.entries(errors).forEach(([field, message]) => {
-    const errorEl = document.getElementById(`err-${field}`);
-    if (errorEl) {
-      errorEl.textContent = message;
-      const fieldWrap = errorEl.closest(".field");
-      if (fieldWrap) fieldWrap.classList.add("has-error");
+function showFieldErrors(errors) {
+
+  document
+    .querySelectorAll(".field-error")
+    .forEach((el) => {
+      el.textContent = "";
+    });
+
+
+  document
+    .querySelectorAll(".field")
+    .forEach((el) => {
+      el.classList.remove("has-error");
+    });
+
+
+  Object.entries(errors).forEach(
+    ([field, message]) => {
+
+      const errorEl =
+        document.getElementById(
+          `err-${field}`
+        );
+
+      if (errorEl) {
+
+        errorEl.textContent =
+          message;
+
+        const fieldWrap =
+          errorEl.closest(".field");
+
+        if (fieldWrap) {
+          fieldWrap.classList.add(
+            "has-error"
+          );
+        }
+      }
     }
-  });
+  );
 }
+
 
 /* ==========================================================================
    FORM SUBMISSION
    ========================================================================== */
+
 let isSubmitting = false;
 
-form.addEventListener("submit", async (event) => {
-  event.preventDefault();
-  if (isSubmitting) return;
 
-  const formData = new FormData(form);
-  const rawData = Object.fromEntries(formData.entries());
+form.addEventListener(
+  "submit",
+  async (event) => {
 
-  const errors = validateForm(rawData);
-  showFieldErrors(errors);
-  if (Object.keys(errors).length > 0) {
-    const firstErrorField = Object.keys(errors)[0];
-    const el = document.getElementById(firstErrorField);
-    if (el) el.focus();
-    return;
-  }
+    event.preventDefault();
 
-  const payload = buildPayload(rawData);
+    if (isSubmitting) return;
 
-  isSubmitting = true;
-  setSubmittingState(true);
 
-  try {
-    const response = await fetch(`${API_URL}/predict`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const formData =
+      new FormData(form);
 
-    if (!response.ok) {
-      if (response.status === 422) {
-        throw new Error("VALIDATION");
+    const rawData =
+      Object.fromEntries(
+        formData.entries()
+      );
+
+
+    const errors =
+      validateForm(rawData);
+
+    showFieldErrors(errors);
+
+
+    if (Object.keys(errors).length > 0) {
+
+      const firstErrorField =
+        Object.keys(errors)[0];
+
+      const el =
+        document.getElementById(
+          firstErrorField
+        );
+
+      if (el) {
+        el.focus();
       }
-      throw new Error("SERVER");
+
+      return;
     }
 
-    const result = await response.json();
-    const score = Number(result.predicted_mental_health_score);
 
-    if (Number.isNaN(score)) {
-      throw new Error("SERVER");
+    const payload =
+      buildPayload(rawData);
+
+
+    isSubmitting = true;
+
+    setSubmittingState(true);
+
+
+    try {
+
+      const response =
+        await fetch(
+          `${API_URL}/predict`,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body:
+              JSON.stringify(payload)
+          }
+        );
+
+
+      if (!response.ok) {
+
+        if (response.status === 422) {
+          throw new Error(
+            "VALIDATION"
+          );
+        }
+
+        throw new Error("SERVER");
+      }
+
+
+      const result =
+        await response.json();
+
+
+      const score =
+        Number(
+          result.predicted_mental_health_score
+        );
+
+
+      if (Number.isNaN(score)) {
+        throw new Error("SERVER");
+      }
+
+
+      displayResult(
+        score,
+        payload
+      );
+
+
+      showToast(
+        "Prediction generated successfully.",
+        "success"
+      );
+
+    } catch (err) {
+
+      handleRequestError(err);
+
+    } finally {
+
+      isSubmitting = false;
+
+      setSubmittingState(false);
     }
-
-    displayResult(score, payload);
-    showToast("Prediction generated successfully.", "success");
-  } catch (err) {
-    handleRequestError(err);
-  } finally {
-    isSubmitting = false;
-    setSubmittingState(false);
   }
-});
+);
+
+
+/* ==========================================================================
+   BUILD API PAYLOAD
+   ========================================================================== */
 
 function buildPayload(rawData) {
+
   return {
+
     age: Number(rawData.age),
+
     gender: rawData.gender,
-    country: rawData.country.trim(),
-    academic_level: rawData.academic_level,
-    most_used_platform: rawData.most_used_platform,
-    purpose_of_use: rawData.purpose_of_use,
-    avg_daily_usage_hours: Number(rawData.avg_daily_usage_hours),
-    daily_unlocks: Number(rawData.daily_unlocks),
-    study_hours: Number(rawData.study_hours),
-    physical_activity_hours: Number(rawData.physical_activity_hours),
-    sleep_hours_per_night: Number(rawData.sleep_hours_per_night),
-    stress_level: rawData.stress_level,
+
+    country:
+      rawData.country.trim(),
+
+    academic_level:
+      rawData.academic_level,
+
+    most_used_platform:
+      rawData.most_used_platform,
+
+    purpose_of_use:
+      rawData.purpose_of_use,
+
+    avg_daily_usage_hours:
+      Number(
+        rawData.avg_daily_usage_hours
+      ),
+
+    daily_unlocks:
+      Number(
+        rawData.daily_unlocks
+      ),
+
+    study_hours:
+      Number(
+        rawData.study_hours
+      ),
+
+    physical_activity_hours:
+      Number(
+        rawData.physical_activity_hours
+      ),
+
+    sleep_hours_per_night:
+      Number(
+        rawData.sleep_hours_per_night
+      ),
+
+    stress_level:
+      rawData.stress_level
   };
 }
 
+
+/* ==========================================================================
+   SUBMITTING STATE
+   ========================================================================== */
+
 function setSubmittingState(submitting) {
-  predictBtn.disabled = submitting;
-  loadingCard.hidden = !submitting;
+
+  predictBtn.disabled =
+    submitting;
+
+  loadingCard.hidden =
+    !submitting;
+
+
   if (submitting) {
+
     resultCard.hidden = true;
-    loadingCard.scrollIntoView({ behavior: "smooth", block: "center" });
+
+    loadingCard.scrollIntoView({
+      behavior: "smooth",
+      block: "center"
+    });
   }
 }
+
+
+/* ==========================================================================
+   ERROR HANDLING
+   ========================================================================== */
 
 function handleRequestError(err) {
-  let title = "Something went wrong while generating the prediction.";
+
+  let title =
+    "Something went wrong while generating the prediction.";
+
   let detail = "";
 
-  if (err && err.message === "VALIDATION") {
-    title = "Please check the entered information.";
-  } else if (err && err.message === "SERVER") {
-    title = "Something went wrong while generating the prediction.";
+
+  if (
+    err &&
+    err.message === "VALIDATION"
+  ) {
+
+    title =
+      "Please check the entered information.";
+
+  } else if (
+    err &&
+    err.message === "SERVER"
+  ) {
+
+    title =
+      "Something went wrong while generating the prediction.";
+
   } else {
-    // Network failure — most likely the backend isn't running.
-    title = "Prediction server unavailable";
-    detail = "Please make sure the FastAPI backend is running and try again.";
+
+    title =
+      "Prediction server unavailable";
+
+    detail =
+      "Please make sure the FastAPI backend is running and try again.";
   }
 
-  showToast(detail ? `${title} ${detail}` : title, "error");
+
+  showToast(
+    detail
+      ? `${title} ${detail}`
+      : title,
+    "error"
+  );
 }
+
 
 /* ==========================================================================
    RESULT DISPLAY
    ========================================================================== */
-function displayResult(score, payload) {
-  const clamped = Math.max(0, Math.min(100, score));
+
+function displayResult(
+  backendScore,
+  payload
+) {
+
+  /*
+   * IMPORTANT:
+   *
+   * Your backend currently returns 0–100.
+   *
+   * We convert:
+   *
+   * 0   -> 0.0 / 10
+   * 50  -> 5.0 / 10
+   * 100 -> 10.0 / 10
+   */
+
+  const scoreOutOf10 =
+    backendScore / 10;
+
+
+  const clamped =
+    Math.max(
+      0,
+      Math.min(
+        10,
+        scoreOutOf10
+      )
+    );
+
 
   resultCard.hidden = false;
-  resultCard.scrollIntoView({ behavior: "smooth", block: "start" });
+
+
+  resultCard.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+
 
   animateScore(clamped);
-  scoreInterpretationEl.textContent = interpretScore(clamped);
+
+
+  scoreInterpretationEl.textContent =
+    interpretScore(clamped);
+
+
   renderProfileSummary(payload);
 }
 
+
+/* ==========================================================================
+   SCORE ANIMATION
+   ========================================================================== */
+
 function animateScore(score) {
-  // Number count-up
+
   const duration = 900;
-  const start = performance.now();
+
+  const start =
+    performance.now();
+
 
   function tick(now) {
-    const progress = Math.min((now - start) / duration, 1);
-    const eased = 1 - Math.pow(1 - progress, 3);
-    scoreNumberEl.textContent = Math.round(eased * score);
-    if (progress < 1) requestAnimationFrame(tick);
+
+    const progress =
+      Math.min(
+        (now - start) /
+          duration,
+        1
+      );
+
+
+    const eased =
+      1 -
+      Math.pow(
+        1 - progress,
+        3
+      );
+
+
+    /*
+     * Display one decimal:
+     *
+     * 0.5
+     * 5.0
+     * 8.7
+     * 10.0
+     */
+
+    scoreNumberEl.textContent =
+      (eased * score)
+        .toFixed(1);
+
+
+    if (progress < 1) {
+      requestAnimationFrame(tick);
+    }
   }
+
+
   requestAnimationFrame(tick);
 
-  // Ring animation
-  const offset = RING_CIRCUMFERENCE - (score / 100) * RING_CIRCUMFERENCE;
-  ringProgress.style.strokeDasharray = `${RING_CIRCUMFERENCE}`;
-  // Force reflow so the transition reliably plays from the reset state
-  ringProgress.style.strokeDashoffset = `${RING_CIRCUMFERENCE}`;
+
+  /*
+   * Ring percentage is now based on 10.
+   */
+
+  const offset =
+    RING_CIRCUMFERENCE -
+    (score / 10) *
+      RING_CIRCUMFERENCE;
+
+
+  ringProgress.style.strokeDasharray =
+    `${RING_CIRCUMFERENCE}`;
+
+
+  ringProgress.style.strokeDashoffset =
+    `${RING_CIRCUMFERENCE}`;
+
+
+  /*
+   * Force browser reflow
+   * so animation starts correctly.
+   */
+
   ringProgress.getBoundingClientRect();
+
+
   requestAnimationFrame(() => {
-    ringProgress.style.strokeDashoffset = `${offset}`;
+
+    ringProgress.style.strokeDashoffset =
+      `${offset}`;
+
   });
 
-  ringProgress.style.stroke = ringColor(score);
+
+  ringProgress.style.stroke =
+    ringColor(score);
 }
 
+
+/* ==========================================================================
+   RING COLOR
+   ========================================================================== */
+
 function ringColor(score) {
-  if (score >= 80) return "#34d399";
-  if (score >= 60) return "#8b7cf6";
-  if (score >= 40) return "#fbbf24";
+
+  if (score >= 8) {
+    return "#34d399";
+  }
+
+  if (score >= 6) {
+    return "#8b7cf6";
+  }
+
+  if (score >= 4) {
+    return "#fbbf24";
+  }
+
   return "#f87171";
 }
 
+
+/* ==========================================================================
+   SCORE INTERPRETATION
+   ========================================================================== */
+
 function interpretScore(score) {
-  if (score >= 80) return "Higher predicted score";
-  if (score >= 60) return "Moderate predicted score";
-  if (score >= 40) return "Lower predicted score";
+
+  if (score >= 8) {
+    return "Higher predicted score";
+  }
+
+  if (score >= 6) {
+    return "Moderate predicted score";
+  }
+
+  if (score >= 4) {
+    return "Lower predicted score";
+  }
+
   return "Very low predicted score";
 }
 
+
+/* ==========================================================================
+   PROFILE SUMMARY
+   ========================================================================== */
+
 function renderProfileSummary(payload) {
+
   const items = [
-    { label: "Age", value: payload.age, icon: iconUser() },
-    { label: "Gender", value: payload.gender, icon: iconUser() },
-    { label: "Academic Level", value: payload.academic_level, icon: iconBook() },
-    { label: "Social Media", value: payload.most_used_platform, icon: iconPhone() },
-    { label: "Daily Usage", value: `${payload.avg_daily_usage_hours.toFixed(1)} hrs`, icon: iconClock() },
-    { label: "Study", value: `${payload.study_hours.toFixed(1)} hrs`, icon: iconBook() },
-    { label: "Physical Activity", value: `${payload.physical_activity_hours.toFixed(1)} hrs`, icon: iconActivity() },
-    { label: "Sleep", value: `${payload.sleep_hours_per_night.toFixed(1)} hrs`, icon: iconMoon() },
-    { label: "Stress", value: payload.stress_level, icon: iconPulse() },
+
+    {
+      label: "Age",
+      value: payload.age,
+      icon: iconUser()
+    },
+
+    {
+      label: "Gender",
+      value: payload.gender,
+      icon: iconUser()
+    },
+
+    {
+      label: "Academic Level",
+      value: payload.academic_level,
+      icon: iconBook()
+    },
+
+    {
+      label: "Social Media",
+      value: payload.most_used_platform,
+      icon: iconPhone()
+    },
+
+    {
+      label: "Daily Usage",
+      value:
+        `${payload.avg_daily_usage_hours.toFixed(1)} hrs`,
+      icon: iconClock()
+    },
+
+    {
+      label: "Study",
+      value:
+        `${payload.study_hours.toFixed(1)} hrs`,
+      icon: iconBook()
+    },
+
+    {
+      label: "Physical Activity",
+      value:
+        `${payload.physical_activity_hours.toFixed(1)} hrs`,
+      icon: iconActivity()
+    },
+
+    {
+      label: "Sleep",
+      value:
+        `${payload.sleep_hours_per_night.toFixed(1)} hrs`,
+      icon: iconMoon()
+    },
+
+    {
+      label: "Stress",
+      value: payload.stress_level,
+      icon: iconPulse()
+    }
+
   ];
 
-  profileSummaryEl.innerHTML = items
-    .map(
-      (item) => `
-      <div class="profile-chip">
-        ${item.icon}
-        <span>
-          <span class="profile-chip-label">${escapeHtml(item.label)}</span>
-          <span class="profile-chip-value">${escapeHtml(String(item.value))}</span>
-        </span>
-      </div>`
-    )
-    .join("");
+
+  profileSummaryEl.innerHTML =
+    items
+      .map(
+        (item) => `
+          <div class="profile-chip">
+            ${item.icon}
+
+            <span>
+              <span class="profile-chip-label">
+                ${escapeHtml(item.label)}
+              </span>
+
+              <span class="profile-chip-value">
+                ${escapeHtml(
+                  String(item.value)
+                )}
+              </span>
+            </span>
+          </div>
+        `
+      )
+      .join("");
 }
 
+
+/* ==========================================================================
+   HTML ESCAPING
+   ========================================================================== */
+
 function escapeHtml(str) {
-  const div = document.createElement("div");
+
+  const div =
+    document.createElement("div");
+
   div.textContent = str;
+
   return div.innerHTML;
 }
 
-/* Small inline icon helpers (kept local to avoid extra network requests) */
+
+/* ==========================================================================
+   INLINE ICONS
+   ========================================================================== */
+
 function iconUser() {
-  return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/></svg>`;
+
+  return `
+    <svg width="18" height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round">
+
+      <circle cx="12" cy="8" r="4"/>
+      <path d="M4 20c0-3.3 3.6-6 8-6s8 2.7 8 6"/>
+
+    </svg>
+  `;
 }
+
+
 function iconBook() {
-  return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h11a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4z"/><path d="M18 4v16"/></svg>`;
+
+  return `
+    <svg width="18" height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round">
+
+      <path d="M4 4h11a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4z"/>
+      <path d="M18 4v16"/>
+
+    </svg>
+  `;
 }
+
+
 function iconPhone() {
-  return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>`;
+
+  return `
+    <svg width="18" height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round">
+
+      <rect x="6" y="2"
+        width="12"
+        height="20"
+        rx="2"/>
+
+      <path d="M11 18h2"/>
+
+    </svg>
+  `;
 }
+
+
 function iconClock() {
-  return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>`;
+
+  return `
+    <svg width="18" height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round">
+
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M12 7v5l3 3"/>
+
+    </svg>
+  `;
 }
+
+
 function iconActivity() {
-  return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`;
+
+  return `
+    <svg width="18" height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round">
+
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+
+    </svg>
+  `;
 }
+
+
 function iconMoon() {
-  return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/></svg>`;
+
+  return `
+    <svg width="18" height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round">
+
+      <path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5z"/>
+
+    </svg>
+  `;
 }
+
+
 function iconPulse() {
-  return `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2 6 4-16 2 10h6"/></svg>`;
+
+  return `
+    <svg width="18" height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round">
+
+      <path d="M3 12h4l2 6 4-16 2 10h6"/>
+
+    </svg>
+  `;
 }
+
 
 /* ==========================================================================
    RESULT ACTIONS
    ========================================================================== */
-predictAgainBtn.addEventListener("click", () => {
-  document.getElementById("predict").scrollIntoView({ behavior: "smooth", block: "start" });
-});
 
-resetFormBtn.addEventListener("click", () => {
-  form.reset();
-  showFieldErrors({});
-  resultCard.hidden = true;
+predictAgainBtn.addEventListener(
+  "click",
+  () => {
 
-  // Reset sliders' displayed values
-  ["study_hours", "physical_activity_hours", "sleep_hours_per_night"].forEach((id) => {
-    document.getElementById(id).dispatchEvent(new Event("input"));
-  });
+    document
+      .getElementById("predict")
+      .scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+  }
+);
 
-  // Reset stress cards to default (Medium)
-  const cards = stressGrid.querySelectorAll(".stress-card");
-  cards.forEach((c) => {
-    const isMedium = c.dataset.value === "Medium";
-    c.classList.toggle("is-selected", isMedium);
-    c.setAttribute("aria-checked", String(isMedium));
-  });
-  stressHiddenInput.value = "Medium";
 
-  document.getElementById("predict").scrollIntoView({ behavior: "smooth", block: "start" });
-});
+resetFormBtn.addEventListener(
+  "click",
+  () => {
+
+    form.reset();
+
+    showFieldErrors({});
+
+    resultCard.hidden = true;
+
+
+    /*
+     * Reset slider displays.
+     */
+
+    [
+      "study_hours",
+      "physical_activity_hours",
+      "sleep_hours_per_night"
+    ].forEach((id) => {
+
+      const element =
+        document.getElementById(id);
+
+      if (element) {
+
+        element.dispatchEvent(
+          new Event("input")
+        );
+      }
+    });
+
+
+    /*
+     * Reset stress cards.
+     */
+
+    const cards =
+      stressGrid.querySelectorAll(
+        ".stress-card"
+      );
+
+
+    cards.forEach((card) => {
+
+      const isMedium =
+        card.dataset.value ===
+        "Medium";
+
+
+      card.classList.toggle(
+        "is-selected",
+        isMedium
+      );
+
+
+      card.setAttribute(
+        "aria-checked",
+        String(isMedium)
+      );
+    });
+
+
+    stressHiddenInput.value =
+      "Medium";
+
+
+    document
+      .getElementById("predict")
+      .scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+  }
+);
+
 
 /* ==========================================================================
    TOAST
    ========================================================================== */
+
 let toastTimeout;
-function showToast(message, type = "success") {
+
+
+function showToast(
+  message,
+  type = "success"
+) {
+
   clearTimeout(toastTimeout);
-  toastEl.textContent = message;
-  toastEl.className = `toast is-visible toast-${type}`;
-  toastTimeout = setTimeout(() => {
-    toastEl.classList.remove("is-visible");
-  }, 4000);
+
+
+  toastEl.textContent =
+    message;
+
+
+  toastEl.className =
+    `toast is-visible toast-${type}`;
+
+
+  toastTimeout =
+    setTimeout(() => {
+
+      toastEl.classList.remove(
+        "is-visible"
+      );
+
+    }, 4000);
 }
